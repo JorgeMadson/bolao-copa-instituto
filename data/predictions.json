@@ -1,11 +1,11 @@
 {
   "participants": [
-    { "id": "GW", "name": "Gabriel W." },
+    { "id": "GW", "name": "Gabriel Wisniewski" },
     { "id": "DM", "name": "Douglas Marcondes" },
     { "id": "BB", "name": "Bruna Barbosa" },
-    { "id": "LS", "name": "Luisa Sampaio" },
+    { "id": "LS", "name": "Luiza Sampaio" },
     { "id": "JM", "name": "Jorge Madson" },
-    { "id": "EP", "name": "Eduarda P." }
+    { "id": "EP", "name": "Eduarda Pissaia" }
   ],
   "predictions": {
     "3": {
