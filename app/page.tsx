@@ -5,16 +5,25 @@ import {
   getMatches,
   getFinishedCount,
   getPredictedCount,
-  getResult,
+  getAllResults,
   getPredictionsForMatch,
 } from "@/lib/scoring"
 
-export default function HomePage() {
+export default async function HomePage() {
   const matches = getMatches()
+  const [results, finishedCount, predictedCount] = await Promise.all([
+    getAllResults(),
+    getFinishedCount(),
+    getPredictedCount(),
+  ])
+
   const predictedIds = matches
     .filter((m) => getPredictionsForMatch(m.id) !== null)
     .map((m) => m.id)
-  const finishedIds = matches.filter((m) => getResult(m.id) !== null).map((m) => m.id)
+
+  const finishedIds = matches
+    .filter((m) => results[String(m.id)] !== undefined)
+    .map((m) => m.id)
 
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-col gap-10 px-4 py-8 md:py-12">
@@ -27,7 +36,7 @@ export default function HomePage() {
             href="/admin"
             className="rounded-full border border-border px-3 py-1 font-mono text-xs uppercase tracking-wider text-muted-foreground transition-colors hover:text-foreground"
           >
-            Inserir placares
+            Ver placares
           </Link>
         </div>
         <h1 className="text-balance text-4xl font-bold tracking-tight md:text-5xl">
@@ -48,17 +57,13 @@ export default function HomePage() {
             <dt className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
               Apurados
             </dt>
-            <dd className="text-2xl font-bold tabular-nums">
-              {getFinishedCount()}
-            </dd>
+            <dd className="text-2xl font-bold tabular-nums">{finishedCount}</dd>
           </div>
           <div className="flex flex-col">
             <dt className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
               Com palpites
             </dt>
-            <dd className="text-2xl font-bold tabular-nums">
-              {getPredictedCount()}
-            </dd>
+            <dd className="text-2xl font-bold tabular-nums">{predictedCount}</dd>
           </div>
         </dl>
       </header>
@@ -69,15 +74,20 @@ export default function HomePage() {
         matches={matches}
         predictedIds={predictedIds}
         finishedIds={finishedIds}
+        results={results}
       />
 
       <footer className="border-t border-border pt-6 font-mono text-xs text-muted-foreground">
-        Dados dos jogos baseados em openfootball/worldcup.json. Atualize os
-        placares na página{" "}
-        <Link href="/admin" className="text-primary underline">
-          Inserir placares
-        </Link>
-        .
+        Resultados atualizados automaticamente via{" "}
+        <a
+          href="https://github.com/openfootball/worldcup.json"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-primary underline"
+        >
+          openfootball/worldcup.json
+        </a>
+        . Atualiza a cada 5 minutos.
       </footer>
     </main>
   )

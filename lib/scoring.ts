@@ -1,19 +1,33 @@
 import matchesData from "@/data/matches.json"
 import predictionsData from "@/data/predictions.json"
-import resultsData from "@/data/results.json"
+import { fetchExternalResults } from "@/lib/openfootball"
 import type {
   Match,
   MatchesData,
   Participant,
   PredictionsData,
-  ResultsData,
   Score,
   StandingRow,
 } from "./types"
 
 const matches = (matchesData as MatchesData).matches
-const { participants, predictions } = predictionsData as PredictionsData
-const { results } = resultsData as ResultsData
+const { participants, predictions } = predictionsData as unknown as PredictionsData
+
+// ---------------------------------------------------------------------------
+// Resultados — obtidos dinamicamente do openfootball (com cache de 5 min)
+// ---------------------------------------------------------------------------
+
+async function getResults(): Promise<Record<string, Score>> {
+  try {
+    return await fetchExternalResults()
+  } catch {
+    return {}
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Queries síncronas (usadas onde os resultados já foram carregados)
+// ---------------------------------------------------------------------------
 
 export function getMatches(): Match[] {
   return [...matches].sort(
@@ -23,10 +37,6 @@ export function getMatches(): Match[] {
 
 export function getParticipants(): Participant[] {
   return participants
-}
-
-export function getResult(matchId: number): Score | null {
-  return results[String(matchId)] ?? null
 }
 
 export function getPrediction(
@@ -47,14 +57,25 @@ export function isExact(prediction: Score, result: Score): boolean {
   return prediction[0] === result[0] && prediction[1] === result[1]
 }
 
-export function getStandings(): StandingRow[] {
+// ---------------------------------------------------------------------------
+// Queries async (buscam resultados externos)
+// ---------------------------------------------------------------------------
+
+export async function getResult(matchId: number): Promise<Score | null> {
+  const results = await getResults()
+  return results[String(matchId)] ?? null
+}
+
+export async function getStandings(): Promise<StandingRow[]> {
+  const results = await getResults()
+
   const rows: StandingRow[] = participants.map((participant) => {
     let points = 0
     let correct = 0
     let played = 0
 
     for (const match of matches) {
-      const result = getResult(match.id)
+      const result = results[String(match.id)] ?? null
       if (!result) continue
 
       const prediction = getPrediction(match.id, participant.id)
@@ -76,10 +97,15 @@ export function getStandings(): StandingRow[] {
   })
 }
 
-export function getFinishedCount(): number {
-  return matches.filter((m) => getResult(m.id) !== null).length
+export async function getFinishedCount(): Promise<number> {
+  const results = await getResults()
+  return matches.filter((m) => results[String(m.id)] !== undefined).length
 }
 
-export function getPredictedCount(): number {
+export async function getPredictedCount(): Promise<number> {
   return matches.filter((m) => getPredictionsForMatch(m.id) !== null).length
+}
+
+export async function getAllResults(): Promise<Record<string, Score>> {
+  return getResults()
 }

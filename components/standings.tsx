@@ -7,9 +7,11 @@ const MEDALS: Record<number, string> = {
   2: "border-l-[oklch(0.62_0.1_50)]",
 }
 
-export function Standings() {
-  const standings = getStandings()
-  const finished = getFinishedCount()
+export async function Standings() {
+  const [standings, finished] = await Promise.all([
+    getStandings(),
+    getFinishedCount(),
+  ])
 
   return (
     <section aria-labelledby="ranking-title" className="flex flex-col gap-4">
