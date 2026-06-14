@@ -1,11 +1,6 @@
 import { TeamFlag } from "@/components/team-flag"
-import {
-  getParticipants,
-  getPredictionsForMatch,
-  getResult,
-  isExact,
-} from "@/lib/scoring"
-import type { Match } from "@/lib/types"
+import { getParticipants, getPredictionsForMatch, isExact } from "@/lib/scoring"
+import type { Match, Score } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
 function formatDateTime(iso: string): { date: string; time: string } {
@@ -23,8 +18,13 @@ function formatDateTime(iso: string): { date: string; time: string } {
   return { date, time }
 }
 
-export function MatchCard({ match }: { match: Match }) {
-  const result = getResult(match.id)
+export function MatchCardClient({
+  match,
+  result,
+}: {
+  match: Match
+  result: Score | null
+}) {
   const predictions = getPredictionsForMatch(match.id)
   const participants = getParticipants()
   const { date, time } = formatDateTime(match.kickoff)

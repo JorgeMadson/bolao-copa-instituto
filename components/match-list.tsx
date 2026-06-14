@@ -1,9 +1,10 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { MatchCard } from "@/components/match-card"
 import type { Match } from "@/lib/types"
 import { cn } from "@/lib/utils"
+import { MatchCardClient } from "@/components/match-card-client"
+import type { Score } from "@/lib/types"
 
 type Filter = "comPalpite" | "encerrados" | "todos"
 
@@ -17,10 +18,12 @@ export function MatchList({
   matches,
   predictedIds,
   finishedIds,
+  results,
 }: {
   matches: Match[]
   predictedIds: number[]
   finishedIds: number[]
+  results: Record<string, Score>
 }) {
   const [filter, setFilter] = useState<Filter>("comPalpite")
 
@@ -71,7 +74,11 @@ export function MatchList({
       ) : (
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           {visible.map((match) => (
-            <MatchCard key={match.id} match={match} />
+            <MatchCardClient
+              key={match.id}
+              match={match}
+              result={results[String(match.id)] ?? null}
+            />
           ))}
         </div>
       )}
