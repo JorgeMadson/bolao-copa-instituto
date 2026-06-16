@@ -1,17 +1,14 @@
-import { getStandings, getFinishedCount } from "@/lib/scoring"
+import { getStandings } from "@/lib/scoring"
 import { cn } from "@/lib/utils"
 
-const MEDALS: Record<number, string> = {
-  0: "border-l-[oklch(0.78_0.13_90)]",
-  1: "border-l-[oklch(0.72_0.02_150)]",
-  2: "border-l-[oklch(0.62_0.1_50)]",
-}
+const MEDALS = [
+  "border-l-[oklch(0.78_0.13_90)]",
+  "border-l-[oklch(0.72_0.02_150)]",
+  "border-l-[oklch(0.62_0.1_50)]",
+]
 
 export async function Standings() {
-  const [standings, finished] = await Promise.all([
-    getStandings(),
-    getFinishedCount(),
-  ])
+  const { rows: standings, finishedCount: finished } = await getStandings()
 
   return (
     <section aria-labelledby="ranking-title" className="flex flex-col gap-4">

@@ -1,4 +1,4 @@
-import { flagUrl, isPlaceholder } from "@/lib/flags"
+import { flagUrl } from "@/lib/flags"
 import { cn } from "@/lib/utils"
 
 export function TeamFlag({
@@ -10,7 +10,7 @@ export function TeamFlag({
 }) {
   const url = flagUrl(team)
 
-  if (!url || isPlaceholder(team)) {
+  if (!url) {
     return (
       <span
         className={cn(

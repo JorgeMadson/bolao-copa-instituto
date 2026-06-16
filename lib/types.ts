@@ -39,3 +39,8 @@ export interface StandingRow {
   correct: number
   played: number
 }
+
+export interface StandingsResult {
+  rows: StandingRow[]
+  finishedCount: number
+}

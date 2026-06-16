@@ -22,7 +22,7 @@ function run(cmd) {
 
 try {
   // Adiciona apenas os arquivos de dados do bolão.
-  run("git add data/results.json data/predictions.json data/matches.json")
+  run("git add data/predictions.json data/matches.json")
 
   // Verifica se há algo para commitar.
   const status = execSync("git status --porcelain data", { encoding: "utf8" }).trim()
