@@ -1,6 +1,11 @@
+"use client"
+
+import { useState } from "react"
+import { ChevronDown } from "lucide-react"
 import { TeamFlag } from "@/components/team-flag"
 import type { Match, Participant, Score } from "@/lib/types"
 import { cn } from "@/lib/utils"
+import { isExact } from "@/lib/scoring"
 
 function formatDateTime(iso: string): { date: string; time: string } {
   const d = new Date(iso)
@@ -30,6 +35,20 @@ export function MatchCard({
 }) {
   const { date, time } = formatDateTime(match.kickoff)
   const finished = result !== null
+
+  // Jogos encerrados começam recolhidos para reduzir a rolagem.
+  const [expanded, setExpanded] = useState(!finished)
+
+  const correctCount =
+    finished && predictions
+      ? participants.reduce((acc, p) => {
+          const guess = predictions[p.id]
+          return acc + (guess && isExact(guess, result) ? 1 : 0)
+        }, 0)
+      : 0
+
+  const hasPredictions = predictions !== null
+  const collapsible = finished && hasPredictions
 
   return (
     <article className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4 shadow-sm">
@@ -71,11 +90,44 @@ export function MatchCard({
         </div>
       </div>
 
-      {predictions ? (
-        <div className="flex flex-col gap-1 border-t border-border pt-3">
+      {!hasPredictions ? (
+        <div className="border-t border-border pt-3">
           <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-            Palpites
+            Sem palpites registrados para este jogo
           </span>
+        </div>
+      ) : collapsible && !expanded ? (
+        <button
+          type="button"
+          onClick={() => setExpanded(true)}
+          aria-expanded={false}
+          className="flex items-center justify-between gap-2 border-t border-border pt-3 text-left"
+        >
+          <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+            {correctCount > 0
+              ? `${correctCount} ${correctCount === 1 ? "acerto" : "acertos"} · ver palpites`
+              : "Nenhum acerto · ver palpites"}
+          </span>
+          <ChevronDown className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+        </button>
+      ) : (
+        <div className="flex flex-col gap-1 border-t border-border pt-3">
+          <div className="flex items-center justify-between gap-2">
+            <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+              Palpites
+            </span>
+            {collapsible && (
+              <button
+                type="button"
+                onClick={() => setExpanded(false)}
+                aria-expanded
+                className="flex items-center gap-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground transition-colors hover:text-foreground"
+              >
+                Recolher
+                <ChevronDown className="h-4 w-4 rotate-180" aria-hidden="true" />
+              </button>
+            )}
+          </div>
           <ul className="flex flex-col gap-1">
             {participants.map((p) => {
               const guess = predictions[p.id]
@@ -113,12 +165,6 @@ export function MatchCard({
               )
             })}
           </ul>
-        </div>
-      ) : (
-        <div className="border-t border-border pt-3">
-          <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-            Sem palpites registrados para este jogo
-          </span>
         </div>
       )}
     </article>

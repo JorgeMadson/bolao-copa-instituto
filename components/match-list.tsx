@@ -27,8 +27,29 @@ export function MatchList({
   const [filter, setFilter] = useState<Filter>("comPalpite")
 
   const visible = useMemo(() => {
-    if (filter === "comPalpite") return matches.filter((m) => !!allPredictions[String(m.id)])
-    if (filter === "encerrados") return matches.filter((m) => !!results[String(m.id)])
+    const isFinished = (m: Match) => !!results[String(m.id)]
+    const isPredicted = (m: Match) => !!allPredictions[String(m.id)]
+
+    if (filter === "encerrados") {
+      // Mais recentes primeiro para ver logo o que acabou de ser apurado.
+      return matches
+        .filter(isFinished)
+        .sort(
+          (a, b) =>
+            new Date(b.kickoff).getTime() - new Date(a.kickoff).getTime(),
+        )
+    }
+    if (filter === "comPalpite") {
+      // Jogos ainda não apurados no topo; os encerrados (recolhidos) ao final.
+      return matches
+        .filter(isPredicted)
+        .sort((a, b) => {
+          const aFinished = isFinished(a) ? 1 : 0
+          const bFinished = isFinished(b) ? 1 : 0
+          if (aFinished !== bFinished) return aFinished - bFinished
+          return new Date(a.kickoff).getTime() - new Date(b.kickoff).getTime()
+        })
+    }
     return matches
   }, [filter, matches, results, allPredictions])
 
