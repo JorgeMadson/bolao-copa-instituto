@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { TeamFlag } from "@/components/team-flag"
-import { getMatches, getAllResults } from "@/lib/scoring"
+import { getMatches, getResults } from "@/lib/scoring"
 
 function formatDate(iso: string): string {
   return new Intl.DateTimeFormat("pt-BR", {
@@ -14,7 +14,7 @@ function formatDate(iso: string): string {
 
 export default async function AdminPage() {
   const matches = getMatches()
-  const results = await getAllResults()
+  const results = await getResults()
   const finishedCount = Object.keys(results).length
 
   return (

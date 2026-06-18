@@ -3,27 +3,26 @@ import { Standings } from "@/components/standings"
 import { MatchList } from "@/components/match-list"
 import {
   getMatches,
-  getFinishedCount,
-  getPredictedCount,
-  getAllResults,
+  getResults,
+  getParticipants,
   getPredictionsForMatch,
+  getPredictedCount,
 } from "@/lib/scoring"
+import type { Score } from "@/lib/types"
 
 export default async function HomePage() {
   const matches = getMatches()
-  const [results, finishedCount, predictedCount] = await Promise.all([
-    getAllResults(),
-    getFinishedCount(),
-    getPredictedCount(),
-  ])
+  const results = await getResults()
+  const participants = getParticipants()
 
-  const predictedIds = matches
-    .filter((m) => getPredictionsForMatch(m.id) !== null)
-    .map((m) => m.id)
+  const allPredictions: Record<string, Record<string, Score>> = {}
+  for (const m of matches) {
+    const p = getPredictionsForMatch(m.id)
+    if (p) allPredictions[String(m.id)] = p
+  }
 
-  const finishedIds = matches
-    .filter((m) => results[String(m.id)] !== undefined)
-    .map((m) => m.id)
+  const finishedCount = Object.keys(results).length
+  const predictedCount = getPredictedCount()
 
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-col gap-10 px-4 py-8 md:py-12">
@@ -72,9 +71,9 @@ export default async function HomePage() {
 
       <MatchList
         matches={matches}
-        predictedIds={predictedIds}
-        finishedIds={finishedIds}
         results={results}
+        allPredictions={allPredictions}
+        participants={participants}
       />
 
       <footer className="border-t border-border pt-6 font-mono text-xs text-muted-foreground">

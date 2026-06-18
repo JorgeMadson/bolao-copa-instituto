@@ -56,7 +56,3 @@ export function flagUrl(team: string): string | null {
   if (!code) return null
   return `https://flagcdn.com/w40/${code}.png`
 }
-
-export function isPlaceholder(team: string): boolean {
-  return TEAM_CODES[team] === undefined
-}

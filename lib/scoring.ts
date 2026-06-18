@@ -8,6 +8,7 @@ import type {
   PredictionsData,
   Score,
   StandingRow,
+  StandingsResult,
 } from "./types"
 
 const matches = (matchesData as MatchesData).matches
@@ -17,10 +18,11 @@ const { participants, predictions } = predictionsData as unknown as PredictionsD
 // Resultados — obtidos dinamicamente do openfootball (com cache de 5 min)
 // ---------------------------------------------------------------------------
 
-async function getResults(): Promise<Record<string, Score>> {
+export async function getResults(): Promise<Record<string, Score>> {
   try {
     return await fetchExternalResults()
-  } catch {
+  } catch (err) {
+    console.error("[scoring] falha ao buscar resultados:", err)
     return {}
   }
 }
@@ -66,7 +68,7 @@ export async function getResult(matchId: number): Promise<Score | null> {
   return results[String(matchId)] ?? null
 }
 
-export async function getStandings(): Promise<StandingRow[]> {
+export async function getStandings(): Promise<StandingsResult> {
   const results = await getResults()
 
   const rows: StandingRow[] = participants.map((participant) => {
@@ -91,21 +93,17 @@ export async function getStandings(): Promise<StandingRow[]> {
     return { participant, points, correct, played }
   })
 
-  return rows.sort((a, b) => {
-    if (b.points !== a.points) return b.points - a.points
-    return a.participant.name.localeCompare(b.participant.name)
-  })
+  const finishedCount = matches.filter((m) => results[String(m.id)] !== undefined).length
+
+  return {
+    rows: rows.sort((a, b) => {
+      if (b.points !== a.points) return b.points - a.points
+      return a.participant.name.localeCompare(b.participant.name)
+    }),
+    finishedCount,
+  }
 }
 
-export async function getFinishedCount(): Promise<number> {
-  const results = await getResults()
-  return matches.filter((m) => results[String(m.id)] !== undefined).length
-}
-
-export async function getPredictedCount(): Promise<number> {
+export function getPredictedCount(): number {
   return matches.filter((m) => getPredictionsForMatch(m.id) !== null).length
-}
-
-export async function getAllResults(): Promise<Record<string, Score>> {
-  return getResults()
 }

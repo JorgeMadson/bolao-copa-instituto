@@ -1,10 +1,9 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import type { Match } from "@/lib/types"
+import type { Match, Participant, Score } from "@/lib/types"
 import { cn } from "@/lib/utils"
-import { MatchCardClient } from "@/components/match-card-client"
-import type { Score } from "@/lib/types"
+import { MatchCard } from "@/components/match-card"
 
 type Filter = "comPalpite" | "encerrados" | "todos"
 
@@ -16,25 +15,25 @@ const FILTERS: { id: Filter; label: string }[] = [
 
 export function MatchList({
   matches,
-  predictedIds,
-  finishedIds,
   results,
+  allPredictions,
+  participants,
 }: {
   matches: Match[]
-  predictedIds: number[]
-  finishedIds: number[]
   results: Record<string, Score>
+  allPredictions: Record<string, Record<string, Score>>
+  participants: Participant[]
 }) {
   const [filter, setFilter] = useState<Filter>("comPalpite")
 
-  const predicted = useMemo(() => new Set(predictedIds), [predictedIds])
-  const finished = useMemo(() => new Set(finishedIds), [finishedIds])
-
   const visible = useMemo(() => {
+    const isFinished = (m: Match) => !!results[String(m.id)]
+    const isPredicted = (m: Match) => !!allPredictions[String(m.id)]
+
     if (filter === "encerrados") {
       // Mais recentes primeiro para ver logo o que acabou de ser apurado.
       return matches
-        .filter((m) => finished.has(m.id))
+        .filter(isFinished)
         .sort(
           (a, b) =>
             new Date(b.kickoff).getTime() - new Date(a.kickoff).getTime(),
@@ -43,16 +42,16 @@ export function MatchList({
     if (filter === "comPalpite") {
       // Jogos ainda não apurados no topo; os encerrados (recolhidos) ao final.
       return matches
-        .filter((m) => predicted.has(m.id))
+        .filter(isPredicted)
         .sort((a, b) => {
-          const aFinished = finished.has(a.id) ? 1 : 0
-          const bFinished = finished.has(b.id) ? 1 : 0
+          const aFinished = isFinished(a) ? 1 : 0
+          const bFinished = isFinished(b) ? 1 : 0
           if (aFinished !== bFinished) return aFinished - bFinished
           return new Date(a.kickoff).getTime() - new Date(b.kickoff).getTime()
         })
     }
     return matches
-  }, [filter, matches, predicted, finished])
+  }, [filter, matches, results, allPredictions])
 
   return (
     <section aria-labelledby="jogos-title" className="flex flex-col gap-4">
@@ -92,10 +91,12 @@ export function MatchList({
       ) : (
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           {visible.map((match) => (
-            <MatchCardClient
+            <MatchCard
               key={match.id}
               match={match}
               result={results[String(match.id)] ?? null}
+              predictions={allPredictions[String(match.id)] ?? null}
+              participants={participants}
             />
           ))}
         </div>

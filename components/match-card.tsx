@@ -3,9 +3,9 @@
 import { useState } from "react"
 import { ChevronDown } from "lucide-react"
 import { TeamFlag } from "@/components/team-flag"
-import { getParticipants, getPredictionsForMatch, isExact } from "@/lib/scoring"
-import type { Match, Score } from "@/lib/types"
+import type { Match, Participant, Score } from "@/lib/types"
 import { cn } from "@/lib/utils"
+import { isExact } from "@/lib/scoring"
 
 function formatDateTime(iso: string): { date: string; time: string } {
   const d = new Date(iso)
@@ -22,15 +22,17 @@ function formatDateTime(iso: string): { date: string; time: string } {
   return { date, time }
 }
 
-export function MatchCardClient({
+export function MatchCard({
   match,
   result,
+  predictions,
+  participants,
 }: {
   match: Match
   result: Score | null
+  predictions: Record<string, Score> | null
+  participants: Participant[]
 }) {
-  const predictions = getPredictionsForMatch(match.id)
-  const participants = getParticipants()
   const { date, time } = formatDateTime(match.kickoff)
   const finished = result !== null
 
@@ -130,7 +132,7 @@ export function MatchCardClient({
             {participants.map((p) => {
               const guess = predictions[p.id]
               if (!guess) return null
-              const correct = result ? isExact(guess, result) : false
+              const correct = result ? guess[0] === result[0] && guess[1] === result[1] : false
               return (
                 <li
                   key={p.id}
