@@ -39,13 +39,24 @@ export function MatchCard({
   // Jogos encerrados começam recolhidos para reduzir a rolagem.
   const [expanded, setExpanded] = useState(!finished)
 
-  const correctCount =
+  const winners =
     finished && predictions
-      ? participants.reduce((acc, p) => {
+      ? participants.filter((p) => {
           const guess = predictions[p.id]
-          return acc + (guess && isExact(guess, result) ? 1 : 0)
-        }, 0)
-      : 0
+          return guess && isExact(guess, result)
+        })
+      : []
+  const correctCount = winners.length
+
+  // Usa o primeiro nome para um resumo mais curto e legível.
+  const winnersSummary = (() => {
+    const names = winners.map((p) => p.name.split(" ")[0])
+    if (names.length === 0) return "Nenhum acerto · ver palpites"
+    if (names.length === 1) return `${names[0]} acertou · ver palpites`
+    const last = names[names.length - 1]
+    const rest = names.slice(0, -1).join(", ")
+    return `${rest} e ${last} acertaram · ver palpites`
+  })()
 
   const hasPredictions = predictions !== null
   const collapsible = finished && hasPredictions
@@ -104,9 +115,7 @@ export function MatchCard({
           className="flex items-center justify-between gap-2 border-t border-border pt-3 text-left"
         >
           <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-            {correctCount > 0
-              ? `${correctCount} ${correctCount === 1 ? "acerto" : "acertos"} · ver palpites`
-              : "Nenhum acerto · ver palpites"}
+            {winnersSummary}
           </span>
           <ChevronDown className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
         </button>
