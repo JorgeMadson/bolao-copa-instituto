@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import type { Match, Participant, Score } from "@/lib/types"
 import { cn } from "@/lib/utils"
 import { MatchCard } from "@/components/match-card"
@@ -13,6 +13,12 @@ const FILTERS: { id: Filter; label: string }[] = [
   { id: "todos", label: "Todos os jogos" },
 ]
 
+const FILTER_STORAGE_KEY = "bolao:matchFilter"
+
+function isFilter(value: string | null): value is Filter {
+  return value === "comPalpite" || value === "encerrados" || value === "todos"
+}
+
 export function MatchList({
   matches,
   results,
@@ -24,7 +30,15 @@ export function MatchList({
   allPredictions: Record<string, Record<string, Score>>
   participants: Participant[]
 }) {
-  const [filter, setFilter] = useState<Filter>("comPalpite")
+  const [filter, setFilter] = useState<Filter>(() => {
+    if (typeof window === "undefined") return "comPalpite"
+    const stored = window.localStorage.getItem(FILTER_STORAGE_KEY)
+    return isFilter(stored) ? stored : "comPalpite"
+  })
+
+  useEffect(() => {
+    window.localStorage.setItem(FILTER_STORAGE_KEY, filter)
+  }, [filter])
 
   const visible = useMemo(() => {
     const isFinished = (m: Match) => !!results[String(m.id)]
