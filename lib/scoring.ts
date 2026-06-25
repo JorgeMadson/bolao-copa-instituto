@@ -75,6 +75,7 @@ export async function getStandings(): Promise<StandingsResult> {
     let points = 0
     let correct = 0
     let played = 0
+    const correctMatches: StandingRow["correctMatches"] = []
 
     for (const match of matches) {
       const result = results[String(match.id)] ?? null
@@ -87,10 +88,17 @@ export async function getStandings(): Promise<StandingsResult> {
       if (isExact(prediction, result)) {
         points += 1
         correct += 1
+        correctMatches.push({
+          matchId: match.id,
+          home: match.home,
+          away: match.away,
+          round: match.round,
+          score: result,
+        })
       }
     }
 
-    return { participant, points, correct, played }
+    return { participant, points, correct, played, correctMatches }
   })
 
   const finishedCount = matches.filter((m) => results[String(m.id)] !== undefined).length
