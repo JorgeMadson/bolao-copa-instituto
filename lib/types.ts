@@ -33,11 +33,20 @@ export interface ResultsData {
   results: Record<string, Score>
 }
 
+export interface CorrectMatch {
+  matchId: number
+  home: string
+  away: string
+  round: string
+  score: Score
+}
+
 export interface StandingRow {
   participant: Participant
   points: number
   correct: number
   played: number
+  correctMatches: CorrectMatch[]
 }
 
 export interface StandingsResult {
