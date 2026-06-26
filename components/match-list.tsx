@@ -30,14 +30,12 @@ export function MatchList({
   allPredictions,
   predictionCounts,
   participants,
-  nowMs,
 }: {
   matches: Match[]
   results: Record<string, MatchResult>
   allPredictions: PredictionsByMatch
   predictionCounts: Record<string, number>
   participants: Participant[]
-  nowMs: number
 }) {
   const [filter, setFilter] = useState<Filter>(() => {
     if (typeof window === "undefined") return "comPalpite"
@@ -119,9 +117,7 @@ export function MatchList({
               match={match}
               result={results[String(match.id)] ?? null}
               predictions={allPredictions[String(match.id)] ?? null}
-              predictionCount={predictionCounts[String(match.id)] ?? 0}
               participants={participants}
-              started={nowMs >= new Date(match.kickoff).getTime()}
             />
           ))}
         </div>

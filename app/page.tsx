@@ -1,13 +1,11 @@
 import Link from "next/link"
 import { Standings } from "@/components/standings"
 import { MatchList } from "@/components/match-list"
-import { getMatches, getResults, getParticipants, hasStarted } from "@/lib/scoring"
+import { getMatches, getResults, getParticipants } from "@/lib/scoring"
 import { getAllPredictions } from "@/lib/db/queries"
-import type { PredictionsByMatch } from "@/lib/types"
 
 export default async function HomePage() {
   const matches = getMatches()
-  const now = new Date()
 
   const [results, participants, predictionsByMatch] = await Promise.all([
     getResults(),
@@ -19,15 +17,6 @@ export default async function HomePage() {
   const predictionCounts: Record<string, number> = {}
   for (const [matchId, byParticipant] of Object.entries(predictionsByMatch)) {
     predictionCounts[matchId] = Object.keys(byParticipant).length
-  }
-
-  // Os palpites de cada jogo só são revelados depois que o jogo começa, para
-  // que ninguém copie o palpite alheio antes do apito inicial.
-  const visiblePredictions: PredictionsByMatch = {}
-  for (const match of matches) {
-    if (!hasStarted(match, now)) continue
-    const byParticipant = predictionsByMatch[String(match.id)]
-    if (byParticipant) visiblePredictions[String(match.id)] = byParticipant
   }
 
   const finishedCount = Object.keys(results).length
@@ -90,10 +79,9 @@ export default async function HomePage() {
       <MatchList
         matches={matches}
         results={results}
-        allPredictions={visiblePredictions}
+        allPredictions={predictionsByMatch}
         predictionCounts={predictionCounts}
         participants={participants}
-        nowMs={now.getTime()}
       />
 
       <footer className="border-t border-border pt-6 font-mono text-xs text-muted-foreground">

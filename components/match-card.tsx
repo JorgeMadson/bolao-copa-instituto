@@ -1,7 +1,5 @@
 "use client"
 
-import { useState } from "react"
-import { ChevronDown, Lock } from "lucide-react"
 import { TeamFlag } from "@/components/team-flag"
 import type { Match, MatchResult, Participant, PredictionEntry } from "@/lib/types"
 import { cn } from "@/lib/utils"
@@ -26,23 +24,16 @@ export function MatchCard({
   match,
   result,
   predictions,
-  predictionCount,
   participants,
-  started,
 }: {
   match: Match
   result: MatchResult | null
   predictions: Record<string, PredictionEntry> | null
-  predictionCount: number
   participants: Participant[]
-  started: boolean
 }) {
   const { date, time } = formatDateTime(match.kickoff)
   const finished = result !== null
   const isKnockout = match.stage === "knockout"
-
-  // Jogos encerrados começam recolhidos para reduzir a rolagem.
-  const [expanded, setExpanded] = useState(!finished)
 
   const winners =
     finished && predictions
@@ -52,18 +43,7 @@ export function MatchCard({
         })
       : []
 
-  const winnersSummary = (() => {
-    const names = winners.map((p) => p.name.split(" ")[0])
-    if (names.length === 0) return "Nenhum acerto · ver palpites"
-    if (names.length === 1) return `${names[0]} pontuou · ver palpites`
-    const last = names[names.length - 1]
-    const rest = names.slice(0, -1).join(", ")
-    return `${rest} e ${last} pontuaram · ver palpites`
-  })()
-
-  // Antes do início do jogo, os palpites alheios ficam ocultos.
-  const revealPredictions = started && predictions !== null
-  const collapsible = finished && revealPredictions
+  const hasPredictions = predictions !== null
 
   return (
     <article className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4 shadow-sm">
@@ -111,47 +91,22 @@ export function MatchCard({
         </p>
       )}
 
-      {!revealPredictions ? (
+      {!hasPredictions ? (
         <div className="flex items-center justify-between gap-2 border-t border-border pt-3">
           <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-            {predictionCount === 0
-              ? "Sem palpites registrados"
-              : !started
-                ? `${predictionCount} ${predictionCount === 1 ? "palpite" : "palpites"} · revelados no início do jogo`
-                : `${predictionCount} ${predictionCount === 1 ? "palpite" : "palpites"}`}
+            Sem palpites registrados
           </span>
-          {!started && predictionCount > 0 && (
-            <Lock className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
-          )}
         </div>
-      ) : collapsible && !expanded ? (
-        <button
-          type="button"
-          onClick={() => setExpanded(true)}
-          aria-expanded={false}
-          className="flex items-center justify-between gap-2 border-t border-border pt-3 text-left"
-        >
-          <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-            {winnersSummary}
-          </span>
-          <ChevronDown className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-        </button>
       ) : (
         <div className="flex flex-col gap-1 border-t border-border pt-3">
           <div className="flex items-center justify-between gap-2">
             <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
               Palpites
             </span>
-            {collapsible && (
-              <button
-                type="button"
-                onClick={() => setExpanded(false)}
-                aria-expanded
-                className="flex items-center gap-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground transition-colors hover:text-foreground"
-              >
-                Recolher
-                <ChevronDown className="h-4 w-4 rotate-180" aria-hidden="true" />
-              </button>
+            {finished && (
+              <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+                {winners.length} {winners.length === 1 ? "acerto" : "acertos"}
+              </span>
             )}
           </div>
           <ul className="flex flex-col gap-1">
