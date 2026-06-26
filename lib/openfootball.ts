@@ -7,7 +7,7 @@
  */
 
 import matchesData from "@/data/matches.json"
-import type { Match, MatchesData, Score } from "./types"
+import type { Match, MatchesData, MatchResult } from "./types"
 
 const OPENFOOTBALL_URL =
   "https://raw.githubusercontent.com/openfootball/worldcup.json/refs/heads/master/2026/worldcup.json"
@@ -64,10 +64,36 @@ const NAME_MAP: Record<string, string> = {
   Panama: "Panamá",
 }
 
+interface OFScore {
+  ft?: [number, number] // tempo normal (90 min)
+  et?: [number, number] // após prorrogação (acumulado)
+  p?: [number, number] // disputa de pênaltis
+}
+
 interface OFMatch {
   team1: string
   team2: string
-  score?: { ft: [number, number] }
+  score?: OFScore
+}
+
+/**
+ * Determina o time que avança num confronto de mata-mata a partir do placar
+ * externo. Considera pênaltis, depois prorrogação, depois tempo normal.
+ */
+function computeAdvance(
+  home: string,
+  away: string,
+  score: OFScore,
+): string | null {
+  if (score.p) {
+    if (score.p[0] === score.p[1]) return null
+    return score.p[0] > score.p[1] ? home : away
+  }
+  const final = score.et ?? score.ft
+  if (!final) return null
+  if (final[0] > final[1]) return home
+  if (final[1] > final[0]) return away
+  return null
 }
 
 interface OFData {
