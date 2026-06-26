@@ -1,28 +1,37 @@
 import Link from "next/link"
 import { Standings } from "@/components/standings"
 import { MatchList } from "@/components/match-list"
-import {
-  getMatches,
-  getResults,
-  getParticipants,
-  getPredictionsForMatch,
-  getPredictedCount,
-} from "@/lib/scoring"
-import type { Score } from "@/lib/types"
+import { getMatches, getResults, getParticipants, hasStarted } from "@/lib/scoring"
+import { getAllPredictions } from "@/lib/db/queries"
+import type { PredictionsByMatch } from "@/lib/types"
 
 export default async function HomePage() {
   const matches = getMatches()
-  const results = await getResults()
-  const participants = getParticipants()
+  const now = new Date()
 
-  const allPredictions: Record<string, Record<string, Score>> = {}
-  for (const m of matches) {
-    const p = getPredictionsForMatch(m.id)
-    if (p) allPredictions[String(m.id)] = p
+  const [results, participants, predictionsByMatch] = await Promise.all([
+    getResults(),
+    getParticipants(),
+    getAllPredictions(),
+  ])
+
+  // Quantidade de palpites por jogo (visível sempre).
+  const predictionCounts: Record<string, number> = {}
+  for (const [matchId, byParticipant] of Object.entries(predictionsByMatch)) {
+    predictionCounts[matchId] = Object.keys(byParticipant).length
+  }
+
+  // Os palpites de cada jogo só são revelados depois que o jogo começa, para
+  // que ninguém copie o palpite alheio antes do apito inicial.
+  const visiblePredictions: PredictionsByMatch = {}
+  for (const match of matches) {
+    if (!hasStarted(match, now)) continue
+    const byParticipant = predictionsByMatch[String(match.id)]
+    if (byParticipant) visiblePredictions[String(match.id)] = byParticipant
   }
 
   const finishedCount = Object.keys(results).length
-  const predictedCount = getPredictedCount()
+  const predictedCount = Object.keys(predictionsByMatch).length
 
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-col gap-10 px-4 py-8 md:py-12">
@@ -31,19 +40,28 @@ export default async function HomePage() {
           <span className="font-mono text-xs uppercase tracking-widest text-primary">
             World Cup 2026
           </span>
-          <Link
-            href="/admin"
-            className="rounded-full border border-border px-3 py-1 font-mono text-xs uppercase tracking-wider text-muted-foreground transition-colors hover:text-foreground"
-          >
-            Ver placares
-          </Link>
+          <nav className="flex items-center gap-2">
+            <Link
+              href="/palpites"
+              className="rounded-full bg-primary px-3 py-1 font-mono text-xs uppercase tracking-wider text-primary-foreground transition-opacity hover:opacity-90"
+            >
+              Fazer palpites
+            </Link>
+            <Link
+              href="/admin"
+              className="rounded-full border border-border px-3 py-1 font-mono text-xs uppercase tracking-wider text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Ver placares
+            </Link>
+          </nav>
         </div>
         <h1 className="text-balance text-4xl font-bold tracking-tight md:text-5xl">
           Bolão da Copa do Mundo 2026
         </h1>
         <p className="max-w-2xl text-pretty leading-relaxed text-muted-foreground">
-          Acerte o placar exato de cada jogo e marque 1 ponto. Acompanhe o
-          ranking dos colegas em tempo real conforme os resultados saem.
+          Acerte o placar exato de cada jogo e marque 1 ponto. No mata-mata, há
+          +1 ponto por acertar quem se classifica. Acompanhe o ranking dos
+          colegas em tempo real conforme os resultados saem.
         </p>
         <dl className="flex flex-wrap gap-6 pt-2">
           <div className="flex flex-col">
@@ -72,8 +90,10 @@ export default async function HomePage() {
       <MatchList
         matches={matches}
         results={results}
-        allPredictions={allPredictions}
+        allPredictions={visiblePredictions}
+        predictionCounts={predictionCounts}
         participants={participants}
+        nowMs={now.getTime()}
       />
 
       <footer className="border-t border-border pt-6 font-mono text-xs text-muted-foreground">

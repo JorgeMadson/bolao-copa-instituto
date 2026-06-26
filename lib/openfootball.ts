@@ -7,7 +7,7 @@
  */
 
 import matchesData from "@/data/matches.json"
-import type { Match, MatchesData, MatchResult } from "./types"
+import type { Match, MatchesData, MatchResult, Score } from "./types"
 
 const OPENFOOTBALL_URL =
   "https://raw.githubusercontent.com/openfootball/worldcup.json/refs/heads/master/2026/worldcup.json"
@@ -109,10 +109,18 @@ function toPtBr(name: string): string {
 
 /**
  * Busca os resultados da fonte externa e retorna um mapa
- * matchId (string) → [homeGoals, awayGoals].
+ * matchId (string) → MatchResult { score, advance }.
+ *
+ * - `score` é o placar do tempo normal (90 min).
+ * - `advance` é o time que se classificou (apenas mata-mata). Para a fase de
+ *   grupos é sempre null. No mata-mata, considera pênaltis > prorrogação >
+ *   tempo normal.
+ *
  * Jogos sem placar confirmado não aparecem no mapa.
  */
-export async function fetchExternalResults(): Promise<Record<string, Score>> {
+export async function fetchExternalResults(): Promise<
+  Record<string, MatchResult>
+> {
   const res = await fetch(OPENFOOTBALL_URL, {
     next: { revalidate: 300 }, // revalida a cada 5 minutos
   })
@@ -123,22 +131,28 @@ export async function fetchExternalResults(): Promise<Record<string, Score>> {
 
   const data: OFData = await res.json()
 
-  // Indexa os jogos externos por par de times (PT-BR) → placar
-  const externalMap = new Map<string, [number, number]>()
+  // Indexa os jogos externos por par de times (PT-BR) → placar completo
+  const externalMap = new Map<string, OFScore>()
   for (const m of data.matches) {
     if (!m.score?.ft) continue
     const key = `${toPtBr(m.team1)}|${toPtBr(m.team2)}`
-    externalMap.set(key, m.score.ft)
+    externalMap.set(key, m.score)
   }
 
   // Mapeia para IDs internos
-  const results: Record<string, Score> = {}
+  const results: Record<string, MatchResult> = {}
   for (const match of localMatches) {
     const key = `${match.home}|${match.away}`
     const score = externalMap.get(key)
-    if (score) {
-      results[String(match.id)] = score
-    }
+    if (!score?.ft) continue
+
+    const ftScore: Score = score.ft
+    const advance =
+      match.stage === "knockout"
+        ? computeAdvance(match.home, match.away, score)
+        : null
+
+    results[String(match.id)] = { score: ftScore, advance }
   }
 
   return results
