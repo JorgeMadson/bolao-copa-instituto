@@ -4,6 +4,8 @@ import { MatchList } from "@/components/match-list"
 import { getMatches, getResults, getParticipants } from "@/lib/scoring"
 import { getAllPredictions } from "@/lib/db/queries"
 
+export const dynamic = "force-dynamic"
+
 export default async function HomePage() {
   const matches = getMatches()
 
