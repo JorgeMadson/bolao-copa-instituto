@@ -19,18 +19,29 @@ export interface Participant {
 // [gols mandante, gols visitante]
 export type Score = [number, number]
 
+// Resultado de um jogo. `score` é o placar do tempo normal (90 min).
+// `advance` é o time que avançou (apenas mata-mata) — definido por prorrogação
+// ou pênaltis quando o tempo normal terminou empatado.
+export interface MatchResult {
+  score: Score
+  advance: string | null
+}
+
+// Palpite de um participante para um jogo.
+export interface PredictionEntry {
+  homeGoals: number
+  awayGoals: number
+  // Time que o participante acha que avança (mata-mata). Em caso de palpite
+  // não empatado, o classificado é o vencedor do placar.
+  advance: string | null
+}
+
+// matchId -> participantId -> palpite
+export type PredictionsByMatch = Record<string, Record<string, PredictionEntry>>
+
 export interface MatchesData {
   tournament: string
   matches: Match[]
-}
-
-export interface PredictionsData {
-  participants: Participant[]
-  predictions: Record<string, Record<string, Score>>
-}
-
-export interface ResultsData {
-  results: Record<string, Score>
 }
 
 export interface CorrectMatch {
@@ -39,6 +50,11 @@ export interface CorrectMatch {
   away: string
   round: string
   score: Score
+  // Pontos ganhos neste jogo (1 = só placar/avanço, 2 = placar + avanço no mata-mata).
+  points: number
+  // Detalha o que foi acertado, para exibição.
+  exactScore: boolean
+  advanceCorrect: boolean
 }
 
 export interface StandingRow {
