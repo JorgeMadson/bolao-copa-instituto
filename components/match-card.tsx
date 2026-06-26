@@ -1,11 +1,11 @@
 "use client"
 
 import { useState } from "react"
-import { ChevronDown } from "lucide-react"
+import { ChevronDown, Lock } from "lucide-react"
 import { TeamFlag } from "@/components/team-flag"
-import type { Match, Participant, Score } from "@/lib/types"
+import type { Match, MatchResult, Participant, PredictionEntry } from "@/lib/types"
 import { cn } from "@/lib/utils"
-import { isExact } from "@/lib/scoring"
+import { predictedAdvance, scorePrediction } from "@/lib/score-utils"
 
 function formatDateTime(iso: string): { date: string; time: string } {
   const d = new Date(iso)
@@ -26,15 +26,20 @@ export function MatchCard({
   match,
   result,
   predictions,
+  predictionCount,
   participants,
+  started,
 }: {
   match: Match
-  result: Score | null
-  predictions: Record<string, Score> | null
+  result: MatchResult | null
+  predictions: Record<string, PredictionEntry> | null
+  predictionCount: number
   participants: Participant[]
+  started: boolean
 }) {
   const { date, time } = formatDateTime(match.kickoff)
   const finished = result !== null
+  const isKnockout = match.stage === "knockout"
 
   // Jogos encerrados começam recolhidos para reduzir a rolagem.
   const [expanded, setExpanded] = useState(!finished)
@@ -43,23 +48,22 @@ export function MatchCard({
     finished && predictions
       ? participants.filter((p) => {
           const guess = predictions[p.id]
-          return guess && isExact(guess, result)
+          return guess && scorePrediction(match, guess, result).points > 0
         })
       : []
-  const correctCount = winners.length
 
-  // Usa o primeiro nome para um resumo mais curto e legível.
   const winnersSummary = (() => {
     const names = winners.map((p) => p.name.split(" ")[0])
     if (names.length === 0) return "Nenhum acerto · ver palpites"
-    if (names.length === 1) return `${names[0]} acertou · ver palpites`
+    if (names.length === 1) return `${names[0]} pontuou · ver palpites`
     const last = names[names.length - 1]
     const rest = names.slice(0, -1).join(", ")
-    return `${rest} e ${last} acertaram · ver palpites`
+    return `${rest} e ${last} pontuaram · ver palpites`
   })()
 
-  const hasPredictions = predictions !== null
-  const collapsible = finished && hasPredictions
+  // Antes do início do jogo, os palpites alheios ficam ocultos.
+  const revealPredictions = started && predictions !== null
+  const collapsible = finished && revealPredictions
 
   return (
     <article className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4 shadow-sm">
@@ -87,9 +91,9 @@ export function MatchCard({
         >
           {finished ? (
             <>
-              <span>{result[0]}</span>
+              <span>{result.score[0]}</span>
               <span className="opacity-60">×</span>
-              <span>{result[1]}</span>
+              <span>{result.score[1]}</span>
             </>
           ) : (
             <span className="text-xs">vs</span>
@@ -101,11 +105,24 @@ export function MatchCard({
         </div>
       </div>
 
-      {!hasPredictions ? (
-        <div className="border-t border-border pt-3">
+      {finished && isKnockout && result.advance && (
+        <p className="text-center font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+          Classificado: <span className="text-primary">{result.advance}</span>
+        </p>
+      )}
+
+      {!revealPredictions ? (
+        <div className="flex items-center justify-between gap-2 border-t border-border pt-3">
           <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-            Sem palpites registrados para este jogo
+            {predictionCount === 0
+              ? "Sem palpites registrados"
+              : !started
+                ? `${predictionCount} ${predictionCount === 1 ? "palpite" : "palpites"} · revelados no início do jogo`
+                : `${predictionCount} ${predictionCount === 1 ? "palpite" : "palpites"}`}
           </span>
+          {!started && predictionCount > 0 && (
+            <Lock className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
+          )}
         </div>
       ) : collapsible && !expanded ? (
         <button
@@ -141,32 +158,42 @@ export function MatchCard({
             {participants.map((p) => {
               const guess = predictions[p.id]
               if (!guess) return null
-              const correct = result ? guess[0] === result[0] && guess[1] === result[1] : false
+              const score = finished
+                ? scorePrediction(match, guess, result)
+                : null
+              const guessAdvance = isKnockout ? predictedAdvance(match, guess) : null
               return (
                 <li
                   key={p.id}
                   className={cn(
                     "flex items-center justify-between gap-2 rounded px-2 py-1 text-sm",
-                    correct && "bg-accent",
+                    score && score.points > 0 && "bg-accent",
                   )}
                 >
-                  <span className="truncate text-muted-foreground">
-                    {p.name}
+                  <span className="flex min-w-0 flex-col">
+                    <span className="truncate text-muted-foreground">
+                      {p.name}
+                    </span>
+                    {isKnockout && guessAdvance && (
+                      <span className="truncate font-mono text-[9px] uppercase tracking-wider text-muted-foreground/70">
+                        avança: {guessAdvance}
+                      </span>
+                    )}
                   </span>
                   <span className="flex items-center gap-2">
                     <span className="font-mono tabular-nums">
-                      {guess[0]} × {guess[1]}
+                      {guess.homeGoals} × {guess.awayGoals}
                     </span>
-                    {finished && (
+                    {score && (
                       <span
                         className={cn(
-                          "inline-flex h-4 w-12 items-center justify-center rounded-full font-mono text-[9px] font-bold uppercase tracking-wider",
-                          correct
+                          "inline-flex h-4 min-w-12 items-center justify-center rounded-full px-1.5 font-mono text-[9px] font-bold uppercase tracking-wider",
+                          score.points > 0
                             ? "bg-primary text-primary-foreground"
                             : "bg-muted text-muted-foreground",
                         )}
                       >
-                        {correct ? "+1 pt" : "—"}
+                        {score.points > 0 ? `+${score.points} pt` : "—"}
                       </span>
                     )}
                   </span>

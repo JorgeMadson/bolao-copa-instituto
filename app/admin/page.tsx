@@ -94,9 +94,9 @@ export default async function AdminPage() {
                 <div className="flex shrink-0 items-center gap-1">
                   {result ? (
                     <span className="flex items-center gap-1 rounded-md bg-primary px-3 py-1 font-mono text-base font-bold tabular-nums text-primary-foreground">
-                      <span>{result[0]}</span>
+                      <span>{result.score[0]}</span>
                       <span className="opacity-60">×</span>
-                      <span>{result[1]}</span>
+                      <span>{result.score[1]}</span>
                     </span>
                   ) : (
                     <span className="flex items-center gap-1 rounded-md bg-muted px-3 py-1 font-mono text-xs text-muted-foreground">

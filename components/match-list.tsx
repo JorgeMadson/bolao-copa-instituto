@@ -1,7 +1,12 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import type { Match, Participant, Score } from "@/lib/types"
+import type {
+  Match,
+  MatchResult,
+  Participant,
+  PredictionsByMatch,
+} from "@/lib/types"
 import { cn } from "@/lib/utils"
 import { MatchCard } from "@/components/match-card"
 
@@ -23,12 +28,16 @@ export function MatchList({
   matches,
   results,
   allPredictions,
+  predictionCounts,
   participants,
+  nowMs,
 }: {
   matches: Match[]
-  results: Record<string, Score>
-  allPredictions: Record<string, Record<string, Score>>
+  results: Record<string, MatchResult>
+  allPredictions: PredictionsByMatch
+  predictionCounts: Record<string, number>
   participants: Participant[]
+  nowMs: number
 }) {
   const [filter, setFilter] = useState<Filter>(() => {
     if (typeof window === "undefined") return "comPalpite"
@@ -42,7 +51,7 @@ export function MatchList({
 
   const visible = useMemo(() => {
     const isFinished = (m: Match) => !!results[String(m.id)]
-    const isPredicted = (m: Match) => !!allPredictions[String(m.id)]
+    const hasPrediction = (m: Match) => (predictionCounts[String(m.id)] ?? 0) > 0
 
     if (filter === "encerrados") {
       // Mais recentes primeiro para ver logo o que acabou de ser apurado.
@@ -56,7 +65,7 @@ export function MatchList({
     if (filter === "comPalpite") {
       // Jogos ainda não apurados no topo; os encerrados (recolhidos) ao final.
       return matches
-        .filter(isPredicted)
+        .filter(hasPrediction)
         .sort((a, b) => {
           const aFinished = isFinished(a) ? 1 : 0
           const bFinished = isFinished(b) ? 1 : 0
@@ -65,7 +74,7 @@ export function MatchList({
         })
     }
     return matches
-  }, [filter, matches, results, allPredictions])
+  }, [filter, matches, results, predictionCounts])
 
   return (
     <section aria-labelledby="jogos-title" className="flex flex-col gap-4">
@@ -110,7 +119,9 @@ export function MatchList({
               match={match}
               result={results[String(match.id)] ?? null}
               predictions={allPredictions[String(match.id)] ?? null}
+              predictionCount={predictionCounts[String(match.id)] ?? 0}
               participants={participants}
+              started={nowMs >= new Date(match.kickoff).getTime()}
             />
           ))}
         </div>

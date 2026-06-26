@@ -1,3 +1,4 @@
+import { ChevronDown } from "lucide-react"
 import { getStandings } from "@/lib/scoring"
 import { cn } from "@/lib/utils"
 
@@ -71,9 +72,10 @@ export async function Standings() {
                         ? "jogo acertado"
                         : "jogos acertados"}
                     </span>
-                    <span className="transition-transform group-open:rotate-180">
-                      v
-                    </span>
+                    <ChevronDown
+                      className="h-4 w-4 transition-transform group-open:rotate-180"
+                      aria-hidden="true"
+                    />
                   </summary>
                   <ul className="flex flex-col gap-1.5 px-4 pb-4">
                     {row.correctMatches.map((m) => (
@@ -88,8 +90,13 @@ export async function Standings() {
                           </span>{" "}
                           {m.away}
                         </span>
-                        <span className="shrink-0 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-                          {m.round}
+                        <span className="flex shrink-0 items-center gap-2">
+                          <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+                            {m.round}
+                          </span>
+                          <span className="inline-flex h-4 items-center justify-center rounded-full bg-primary px-1.5 font-mono text-[9px] font-bold uppercase tracking-wider text-primary-foreground">
+                            +{m.points} {m.points === 1 ? "pt" : "pts"}
+                          </span>
                         </span>
                       </li>
                     ))}

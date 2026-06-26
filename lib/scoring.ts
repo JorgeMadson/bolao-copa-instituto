@@ -1,34 +1,30 @@
 import matchesData from "@/data/matches.json"
-import predictionsData from "@/data/predictions.json"
 import { fetchExternalResults } from "@/lib/openfootball"
+import { getAllPredictions, getParticipantsDb } from "@/lib/db/queries"
+import { scorePrediction } from "@/lib/score-utils"
 import type {
   Match,
   MatchesData,
+  MatchResult,
   Participant,
-  PredictionsData,
   Score,
   StandingRow,
   StandingsResult,
 } from "./types"
 
+// Reexporta os helpers puros de pontuação para quem importa de "@/lib/scoring".
+export {
+  hasStarted,
+  isExactScore,
+  predictedAdvance,
+  scorePrediction,
+} from "@/lib/score-utils"
+export type { PredictionScore } from "@/lib/score-utils"
+
 const matches = (matchesData as MatchesData).matches
-const { participants, predictions } = predictionsData as unknown as PredictionsData
 
 // ---------------------------------------------------------------------------
-// Resultados — obtidos dinamicamente do openfootball (com cache de 5 min)
-// ---------------------------------------------------------------------------
-
-export async function getResults(): Promise<Record<string, Score>> {
-  try {
-    return await fetchExternalResults()
-  } catch (err) {
-    console.error("[scoring] falha ao buscar resultados:", err)
-    return {}
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Queries síncronas (usadas onde os resultados já foram carregados)
+// Jogos (estáticos, vindos do matches.json)
 // ---------------------------------------------------------------------------
 
 export function getMatches(): Match[] {
@@ -37,39 +33,46 @@ export function getMatches(): Match[] {
   )
 }
 
-export function getParticipants(): Participant[] {
-  return participants
-}
-
-export function getPrediction(
-  matchId: number,
-  participantId: string,
-): Score | null {
-  return predictions[String(matchId)]?.[participantId] ?? null
-}
-
-export function getPredictionsForMatch(
-  matchId: number,
-): Record<string, Score> | null {
-  return predictions[String(matchId)] ?? null
-}
-
-// 1 ponto para o placar exato (gols mandante e visitante corretos)
-export function isExact(prediction: Score, result: Score): boolean {
-  return prediction[0] === result[0] && prediction[1] === result[1]
+export function getMatchById(matchId: number): Match | undefined {
+  return matches.find((m) => m.id === matchId)
 }
 
 // ---------------------------------------------------------------------------
-// Queries async (buscam resultados externos)
+// Participantes e palpites (vindos do banco)
 // ---------------------------------------------------------------------------
 
-export async function getResult(matchId: number): Promise<Score | null> {
+export function getParticipants(): Promise<Participant[]> {
+  return getParticipantsDb()
+}
+
+// ---------------------------------------------------------------------------
+// Resultados — obtidos dinamicamente do openfootball (com cache de 5 min)
+// ---------------------------------------------------------------------------
+
+export async function getResults(): Promise<Record<string, MatchResult>> {
+  try {
+    return await fetchExternalResults()
+  } catch (err) {
+    console.error("[scoring] falha ao buscar resultados:", err)
+    return {}
+  }
+}
+
+export async function getResult(matchId: number): Promise<MatchResult | null> {
   const results = await getResults()
   return results[String(matchId)] ?? null
 }
 
+// ---------------------------------------------------------------------------
+// Classificação
+// ---------------------------------------------------------------------------
+
 export async function getStandings(): Promise<StandingsResult> {
-  const results = await getResults()
+  const [results, participants, predictionsByMatch] = await Promise.all([
+    getResults(),
+    getParticipantsDb(),
+    getAllPredictions(),
+  ])
 
   const rows: StandingRow[] = participants.map((participant) => {
     let points = 0
@@ -81,19 +84,28 @@ export async function getStandings(): Promise<StandingsResult> {
       const result = results[String(match.id)] ?? null
       if (!result) continue
 
-      const prediction = getPrediction(match.id, participant.id)
+      const prediction = predictionsByMatch[String(match.id)]?.[participant.id]
       if (!prediction) continue
 
       played += 1
-      if (isExact(prediction, result)) {
-        points += 1
+      const { points: pts, exactScore, advanceCorrect } = scorePrediction(
+        match,
+        prediction,
+        result,
+      )
+
+      if (pts > 0) {
+        points += pts
         correct += 1
         correctMatches.push({
           matchId: match.id,
           home: match.home,
           away: match.away,
           round: match.round,
-          score: result,
+          score: result.score,
+          points: pts,
+          exactScore,
+          advanceCorrect,
         })
       }
     }
@@ -101,17 +113,25 @@ export async function getStandings(): Promise<StandingsResult> {
     return { participant, points, correct, played, correctMatches }
   })
 
-  const finishedCount = matches.filter((m) => results[String(m.id)] !== undefined).length
+  const finishedCount = matches.filter(
+    (m) => results[String(m.id)] !== undefined,
+  ).length
 
   return {
     rows: rows.sort((a, b) => {
       if (b.points !== a.points) return b.points - a.points
+      if (b.correct !== a.correct) return b.correct - a.correct
       return a.participant.name.localeCompare(b.participant.name)
     }),
     finishedCount,
   }
 }
 
-export function getPredictedCount(): number {
-  return matches.filter((m) => getPredictionsForMatch(m.id) !== null).length
+// Quantos jogos têm pelo menos um palpite registrado.
+export async function getPredictedCount(): Promise<number> {
+  const predictionsByMatch = await getAllPredictions()
+  return Object.keys(predictionsByMatch).length
 }
+
+// Helper de score puro, exportado para reuso por tipo Score.
+export type { Score }
